@@ -12,6 +12,7 @@ import base64
 from PIL import Image
 import time
 import math
+import networkx as nx
 
 # Set page configuration
 st.set_page_config(page_title="Word Embedding Visualization", layout="wide")
@@ -579,7 +580,7 @@ def main():
         )
     
     # Create tabs for different visualizations
-    tab1, tab2, tab3 = st.tabs(["Word Embedding", "Positional Encoding", "Combined Representation"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Word Embedding", "Positional Encoding", "Combined Representation", "Self-Attention"])
     
     with tab1:
         # Word Embedding Visualization Section
@@ -607,7 +608,7 @@ def main():
                 selected_epoch,
                 highlight_words=selected_words
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_column_width=True, key="current_epoch_plot")
         
         # Display embedding values for selected words
         if selected_words:
@@ -688,7 +689,7 @@ def main():
                 )
                 
                 # Display the interactive plot
-                st.plotly_chart(interactive_fig, use_container_width=True)
+                st.plotly_chart(interactive_fig, use_column_width=True, key="interactive_3d_plot")
                 
                 # Add instructions for interaction
                 st.info(
@@ -729,7 +730,7 @@ def main():
                             highlight_words=selected_words
                         )
                         plot_container = st.empty()
-                        plot_container.plotly_chart(play_fig, use_container_width=True)
+                        plot_container.plotly_chart(play_fig, use_column_width=True, key=f"play_fig_{epoch}")
                         
                         # Add extra delay for final epoch
                         if epoch == num_epochs:
@@ -766,7 +767,7 @@ def main():
             max_dims = st.slider("Jumlah Dimensi untuk Ditampilkan", 16, 128, 64, step=16)
             
             heatmap_fig = visualize_positional_encoding(pos_encoding, max_positions, max_dims)
-            st.plotly_chart(heatmap_fig, use_container_width=True)
+            st.plotly_chart(heatmap_fig, use_column_width=True, key="positional_encoding_heatmap")
             
             st.markdown("""
             **Penjelasan Heatmap:**
@@ -785,7 +786,7 @@ def main():
             
             if positions:
                 sinusoidal_fig = visualize_sinusoidal_patterns(pos_encoding, positions, max_dims)
-                st.plotly_chart(sinusoidal_fig, use_container_width=True)
+                st.plotly_chart(sinusoidal_fig, use_column_width=True, key="sinusoidal_patterns")
                 
                 st.markdown("""
                 **Penjelasan Pola Sinusoidal:**
@@ -816,7 +817,7 @@ def main():
                 title="Matriks Kesamaan Posisi (Cosine Similarity)"
             )
             
-            st.plotly_chart(similarity_fig, use_container_width=True)
+            st.plotly_chart(similarity_fig, use_column_width=True, key="position_similarity_matrix")
             
             st.markdown("""
             **Penjelasan Matriks Kesamaan:**
@@ -894,7 +895,7 @@ def main():
                     pos_encoding, 
                     selected_position
                 )
-                st.plotly_chart(combination_fig, use_container_width=True)
+                st.plotly_chart(combination_fig, use_column_width=True, key="embedding_combination_process")
                 
                 st.markdown("""
                 **Penjelasan Proses Kombinasi:**
@@ -914,7 +915,7 @@ def main():
                     selected_positions,
                     highlight_words=selected_words
                 )
-                st.plotly_chart(combined_fig, use_container_width=True)
+                st.plotly_chart(combined_fig, use_column_width=True, key="combined_3d_visualization")
                 
                 st.markdown("""
                 **Penjelasan Visualisasi 3D:**
@@ -985,7 +986,7 @@ def main():
                     height=400 + 20 * len(selected_words)  # Adjust height based on number of words
                 )
                 
-                st.plotly_chart(heatmap_fig, use_container_width=True)
+                st.plotly_chart(heatmap_fig, use_column_width=True, key="combined_heatmap_visualization")
                 
                 st.markdown("""
                 **Penjelasan Heatmap:**
@@ -1016,7 +1017,390 @@ def main():
             st.image("https://jalammar.github.io/images/t/transformer_positional_encoding_vectors.png", 
                     caption="Ilustrasi Positional Encoding dalam Transformer (Sumber: Jay Alammar)",
                     use_column_width=True)
+    
+    with tab4:
+        # Self-Attention Visualization Section
+        st.header("Visualisasi Self-Attention")
+        st.markdown("""
+        Self-attention adalah mekanisme kunci dalam model Transformer yang memungkinkan model untuk memfokuskan pada bagian yang relevan dari input.
+        Visualisasi ini menunjukkan bagaimana kata-kata dalam kalimat "memperhatikan" kata-kata lain untuk memahami konteks dan hubungan.
+        """)
+        
+        # Input for sample sentence
+        sample_sentence = st.text_area(
+            "Masukkan kalimat sampel untuk visualisasi attention", 
+            value="Saya suka belajar tentang kecerdasan buatan dan pemrosesan bahasa alami.",
+            height=100
+        )
+        
+        # Number of attention heads
+        num_heads = st.slider("Jumlah Attention Head", 1, 8, 4)
+        
+        # Generate attention weights
+        if sample_sentence:
+            tokens, attention_weights = generate_attention_weights(sample_sentence, num_heads=num_heads)
+            
+            # Display tokens
+            with st.expander("Token yang Dihasilkan", expanded=False):
+                st.write(tokens)
+            
+            # Visualization options
+            viz_type = st.radio(
+                "Pilih Jenis Visualisasi",
+                ["Heatmap", "Grafik Jaringan", "Animasi Multi-Head"],
+                index=0
+            )
+            
+            if viz_type == "Heatmap":
+                # Select attention head
+                head_idx = st.slider("Pilih Attention Head", 0, num_heads-1, 0)
+                
+                # Create heatmap visualization
+                heatmap_fig = visualize_attention_heatmap(tokens, attention_weights, head_idx)
+                st.plotly_chart(heatmap_fig, use_column_width=True, key="attention_heatmap")
+                
+                # Explanation
+                st.markdown("""
+                **Penjelasan Heatmap:**
+                - Setiap sel menunjukkan seberapa besar token pada sumbu Y "memperhatikan" token pada sumbu X
+                - Warna lebih terang menunjukkan bobot perhatian yang lebih tinggi
+                - Perhatikan bagaimana beberapa kata memiliki koneksi yang kuat dengan kata-kata tertentu lainnya
+                """)
+                
+                # Word-specific attention analysis
+                with st.expander("Analisis Perhatian untuk Kata Tertentu", expanded=True):
+                    # Select a token to analyze
+                    selected_token_idx = st.selectbox(
+                        "Pilih token untuk dianalisis",
+                        options=list(range(len(tokens))),
+                        format_func=lambda x: f"{tokens[x]} (posisi {x+1})"
+                    )
+                    
+                    # Get attention weights for selected token
+                    token_attention = attention_weights[head_idx][selected_token_idx]
+                    
+                    # Create bar chart
+                    token_fig = px.bar(
+                        x=tokens,
+                        y=token_attention,
+                        labels={"x": "Token", "y": "Bobot Perhatian"},
+                        title=f"Distribusi Perhatian untuk '{tokens[selected_token_idx]}'"
+                    )
+                    st.plotly_chart(token_fig, use_column_width=True, key="token_attention_bar")
+                    
+                    # Find tokens with highest attention
+                    top_indices = np.argsort(token_attention)[-3:][::-1]
+                    st.markdown("**Token dengan Perhatian Tertinggi:**")
+                    for idx in top_indices:
+                        st.markdown(f"- **{tokens[idx]}** (bobot: {token_attention[idx]:.4f})")
+            
+            elif viz_type == "Grafik Jaringan":
+                # Select attention head
+                head_idx = st.slider("Pilih Attention Head", 0, num_heads-1, 0)
+                
+                # Threshold for showing connections
+                threshold = st.slider("Ambang Batas Koneksi", 0.0, 1.0, 0.1, 0.05)
+                
+                # Create network graph visualization
+                graph_fig = visualize_attention_graph(tokens, attention_weights, head_idx, threshold)
+                st.plotly_chart(graph_fig, use_column_width=True, key="attention_graph")
+                
+                # Explanation
+                st.markdown("""
+                **Penjelasan Grafik Jaringan:**
+                - Setiap node adalah token dalam kalimat
+                - Garis menunjukkan koneksi perhatian antara token
+                - Ketebalan garis menunjukkan kekuatan perhatian
+                - Hanya koneksi di atas ambang batas yang ditampilkan
+                """)
+            
+            else:  # Animated visualization
+                if st.button("Hasilkan Animasi Multi-Head"):
+                    with st.spinner("Menghasilkan animasi... Ini mungkin memerlukan waktu sebentar."):
+                        # Create animation
+                        gif_buffer = create_attention_animation(tokens, attention_weights)
+                        
+                        # Display the animation
+                        st.image(gif_buffer, caption="Animasi Multi-Head Attention", use_column_width=True)
+                        
+                        # Provide download link for the GIF
+                        gif_data = gif_buffer.getvalue()
+                        b64 = base64.b64encode(gif_data).decode()
+                        href = f'<a href="data:image/gif;base64,{b64}" download="attention_animation.gif">Unduh GIF</a>'
+                        st.markdown(href, unsafe_allow_html=True)
+            
+            # Comparison of different heads
+            with st.expander("Perbandingan Attention Head", expanded=True):
+                st.markdown("### Perbandingan Pola Perhatian di Berbagai Head")
+                
+                # Create a grid of small heatmaps
+                cols = st.columns(min(4, num_heads))
+                for i in range(num_heads):
+                    with cols[i % min(4, num_heads)]:
+                        small_fig = visualize_attention_heatmap(tokens, attention_weights, i)
+                        small_fig.update_layout(height=300, margin=dict(l=0, r=0, b=0, t=30))
+                        st.plotly_chart(small_fig, use_column_width=True)
+            
+            # Explanation of self-attention in Transformer models
+            with st.expander("Penjelasan Self-Attention dalam Model Transformer", expanded=True):
+                st.markdown("""
+                ### Bagaimana Self-Attention Bekerja dalam Model Transformer
+                
+                Self-attention memungkinkan model untuk mempertimbangkan konteks penuh dari setiap kata dalam kalimat:
+                
+                1. **Multi-Head Attention**: Model menggunakan beberapa "head" perhatian yang berbeda untuk menangkap berbagai jenis hubungan
+                
+                2. **Pola Perhatian yang Berbeda**: 
+                   - Beberapa head fokus pada hubungan sintaksis (subjek-kata kerja)
+                   - Beberapa head fokus pada hubungan semantik (kata-kata terkait)
+                   - Beberapa head fokus pada hubungan jarak jauh dalam kalimat
+                
+                3. **Proses Perhitungan**:
+                   - Setiap token diubah menjadi tiga vektor: Query, Key, dan Value
+                   - Bobot perhatian dihitung dari dot product Query dan Key
+                   - Output adalah rata-rata tertimbang dari vektor Value
+                
+                4. **Keuntungan**:
+                   - Dapat menangkap hubungan jarak jauh lebih baik daripada RNN
+                   - Memungkinkan pemrosesan paralel untuk efisiensi
+                   - Memberikan interpretabilitas melalui visualisasi bobot perhatian
+                """)
+                
+                # Add an illustrative example
+                st.image("https://jalammar.github.io/images/t/transformer_self_attention_visualization.png", 
+                        caption="Ilustrasi Self-Attention dalam Transformer (Sumber: Jay Alammar)",
+                        use_column_width=True)
+
+# Function to generate sample attention weights
+def generate_attention_weights(sentence, num_heads=4):
+    # Tokenize the sentence (simple whitespace tokenization for demo)
+    tokens = sentence.split()
+    seq_len = len(tokens)
+    
+    # Generate random attention weights for each head
+    np.random.seed(42)  # For reproducibility
+    attention_weights = []
+    
+    for head in range(num_heads):
+        # Create attention pattern based on head number to simulate different attention behaviors
+        if head == 0:
+            # Head 0: Local attention (attend to nearby words)
+            weights = np.zeros((seq_len, seq_len))
+            for i in range(seq_len):
+                for j in range(seq_len):
+                    # Gaussian distribution centered at current position
+                    weights[i, j] = np.exp(-0.5 * ((i - j) / 2) ** 2)
+        
+        elif head == 1:
+            # Head 1: Global attention (some words attend to all others)
+            weights = np.random.rand(seq_len, seq_len) * 0.5
+            # Make some tokens (e.g., important words) attend to all others
+            for i in range(seq_len):
+                if i % 3 == 0:  # Every third word gets higher attention
+                    weights[i, :] += 0.5
+        
+        elif head == 2:
+            # Head 2: Syntactic attention (simulating attention to related parts of speech)
+            weights = np.random.rand(seq_len, seq_len) * 0.3
+            # Create some syntactic-like patterns
+            for i in range(seq_len):
+                # Subject-verb or verb-object relationships
+                if i > 0 and i < seq_len - 1:
+                    weights[i, i-1] += 0.7  # Attend to previous word
+                    if i + 2 < seq_len:
+                        weights[i, i+2] += 0.6  # Skip one word
+        
+        else:
+            # Head 3: Semantic attention (random but with some strong connections)
+            weights = np.random.rand(seq_len, seq_len) * 0.4
+            # Add some strong semantic connections
+            for i in range(seq_len):
+                # Connect some random pairs strongly
+                strong_connection = np.random.randint(0, seq_len)
+                weights[i, strong_connection] += 0.6
+        
+        # Apply softmax to get proper attention weights (sum to 1)
+        for i in range(seq_len):
+            weights[i] = np.exp(weights[i]) / np.sum(np.exp(weights[i]))
+        
+        attention_weights.append(weights)
+    
+    return tokens, attention_weights
+
+# Function to visualize attention weights as a heatmap
+def visualize_attention_heatmap(tokens, attention_weights, head_idx=0):
+    # Create heatmap
+    fig = px.imshow(
+        attention_weights[head_idx],
+        labels=dict(x="Token Tujuan", y="Token Sumber", color="Bobot Perhatian"),
+        x=tokens,
+        y=tokens,
+        color_continuous_scale="Viridis",
+        title=f"Visualisasi Self-Attention (Head {head_idx+1})"
+    )
+    
+    # Update layout
+    fig.update_layout(
+        xaxis=dict(side="bottom"),
+        height=500
+    )
+    
+    return fig
+
+# Function to visualize attention as a network graph
+def visualize_attention_graph(tokens, attention_weights, head_idx=0, threshold=0.1):
+    # Create a graph from attention weights
+    G = nx.DiGraph()
+    
+    # Add nodes
+    for i, token in enumerate(tokens):
+        G.add_node(i, label=token)
+    
+    # Add edges with weights above threshold
+    for i in range(len(tokens)):
+        for j in range(len(tokens)):
+            weight = attention_weights[head_idx][i, j]
+            if weight > threshold:
+                G.add_edge(i, j, weight=weight)
+    
+    # Create positions for nodes in a circle
+    pos = nx.circular_layout(G)
+    
+    # Create edge trace
+    edge_x = []
+    edge_y = []
+    edge_weights = []
+    
+    for edge in G.edges(data=True):
+        x0, y0 = pos[edge[0]]
+        x1, y1 = pos[edge[1]]
+        edge_x.extend([x0, x1, None])
+        edge_y.extend([y0, y1, None])
+        edge_weights.append(edge[2]['weight'])
+    
+    # Scale edge weights for visibility
+    scaled_weights = [w * 3 for w in edge_weights for _ in range(3)]
+    
+    edge_trace = go.Scatter(
+        x=edge_x, y=edge_y,
+        line=dict(width=scaled_weights, color='rgba(150,150,150,0.8)'),
+        hoverinfo='none',
+        mode='lines')
+    
+    # Create node trace
+    node_x = []
+    node_y = []
+    node_text = []
+    
+    for node in G.nodes():
+        x, y = pos[node]
+        node_x.append(x)
+        node_y.append(y)
+        node_text.append(tokens[node])
+    
+    node_trace = go.Scatter(
+        x=node_x, y=node_y,
+        mode='markers+text',
+        text=node_text,
+        textposition="middle center",
+        marker=dict(
+            showscale=False,
+            color='rgba(89, 205, 150, 0.8)',
+            size=30,
+            line=dict(width=2, color='DarkSlateGrey')
+        ),
+        hoverinfo='text'
+    )
+    
+    # Create figure
+    fig = go.Figure(
+        data=[edge_trace, node_trace],
+        layout=go.Layout(
+            title=f'Grafik Perhatian untuk Head {head_idx+1}',
+            showlegend=False,
+            hovermode='closest',
+            margin=dict(b=20, l=5, r=5, t=40),
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            height=500
+        )
+    )
+    
+    return fig
+
+# Function to create an animated visualization of multi-head attention
+def create_attention_animation(tokens, attention_weights):
+    # Create a figure for matplotlib animation
+    fig, ax = plt.subplots(figsize=(10, 8))
+    
+    # Function to update the plot for each frame
+    def update(frame_idx):
+        ax.clear()
+        
+        # Get attention weights for this head
+        weights = attention_weights[frame_idx]
+        
+        # Create heatmap
+        im = ax.imshow(weights, cmap='viridis')
+        
+        # Add colorbar
+        plt.colorbar(im, ax=ax)
+        
+        # Add labels
+        ax.set_xticks(np.arange(len(tokens)))
+        ax.set_yticks(np.arange(len(tokens)))
+        ax.set_xticklabels(tokens)
+        ax.set_yticklabels(tokens)
+        
+        # Rotate x-axis labels
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+        
+        # Add title
+        ax.set_title(f"Self-Attention Head {frame_idx+1}")
+        
+        # Add axis labels
+        ax.set_xlabel("Token Tujuan")
+        ax.set_ylabel("Token Sumber")
+    
+    # Create animation
+    anim = animation.FuncAnimation(fig, update, frames=len(attention_weights), interval=1000)
+    
+    # Create a temporary file to save the animation
+    import tempfile
+    import os
+    
+    # Create a temporary file with .gif extension
+    temp_file = tempfile.NamedTemporaryFile(suffix='.gif', delete=False)
+    temp_filename = temp_file.name
+    temp_file.close()
+    
+    try:
+        # Save animation to the temporary file
+        anim.save(temp_filename, writer='pillow', fps=1)
+        
+        # Read the file into a buffer for Streamlit
+        with open(temp_filename, 'rb') as f:
+            gif_data = f.read()
+            
+        # Create a BytesIO object from the data
+        gif_buffer = io.BytesIO(gif_data)
+        gif_buffer.seek(0)
+        
+    finally:
+        # Clean up the temporary file
+        if os.path.exists(temp_filename):
+            os.unlink(temp_filename)
+    
+    plt.close(fig)  # Close the figure to free memory
+    
+    return gif_buffer
 
 # Run the application
 if __name__ == "__main__":
+    # Import networkx for graph visualization
+    try:
+        import networkx as nx
+    except ImportError:
+        st.error("Please install networkx: pip install networkx")
+    
     main()
