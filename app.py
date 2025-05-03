@@ -11,7 +11,6 @@ import io
 import base64
 from PIL import Image
 import time
-import math
 import networkx as nx
 
 # Set page configuration
